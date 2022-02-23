@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32126.315
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MınerMk2", "MınerMk2\MınerMk2.csproj", "{3C6C8758-EE4B-4535-9ACB-562E5C1EE4C8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3C6C8758-EE4B-4535-9ACB-562E5C1EE4C8}.Debug|x64.ActiveCfg = Debug|x64
+		{3C6C8758-EE4B-4535-9ACB-562E5C1EE4C8}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1AB4F372-85AA-42A7-8817-FE00BF3EE23A}
+	EndGlobalSection
+EndGlobal
