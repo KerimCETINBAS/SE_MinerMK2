@@ -20,16 +20,20 @@ using VRageMath;
 
 namespace IngameScript
 {
-    partial class Program : MyGridProgram
-    {
+    partial class Program : MyGridProgram {
+
+ 
+
         private class Context
         {
+
             public bool IsCalculateDrillDistanceCalled
             {
                 get;
                 set;
             }
 
+            public bool IsCalculateExtruderDistanceCalled { get; set; }
             public byte currentDrillStep { get; set; }
             public States currentState { get; set; }
 
@@ -42,11 +46,12 @@ namespace IngameScript
 
             public Context()
             {
-                this.IsCalculateDrillDistanceCalled = false;
-                this.currentDrillStep = 0;
-                this.currentExtruderStep = 1;
-                this.currentExtruderPositon = 1;
-                this.rotateDrillCalled = false;
+                IsCalculateDrillDistanceCalled = false;
+                currentDrillStep = 0;
+                currentExtruderStep = 1;
+                currentExtruderPositon = 1;
+                rotateDrillCalled = false;
+                IsCalculateExtruderDistanceCalled = false;
             }
         }
 
@@ -56,12 +61,12 @@ namespace IngameScript
         // rotors -> extruder top - bottom rotors, piston rotor
         private Dictionary<string, IMyMotorAdvancedStator> rotors = new Dictionary<string, IMyMotorAdvancedStator>();
 
-        // drill pistons 
+        // drill pistons
         private List<IMyPistonBase> drillPistons = new List<IMyPistonBase>();
 
         // extruder piston
         private IMyPistonBase extruderPiston;
-        // welder 
+        // welder
         private IMyShipWelder welder;
 
 
@@ -80,11 +85,10 @@ namespace IngameScript
 
         }
 
-      
+
 
         public Program()
         {
-            #region select blocks from game
             try { welder = GridTerminalSystem.GetBlockWithName("Extruder welder") as IMyShipWelder; }
             catch { throw new Exception("\"Extruder\" welder is not set"); }
 
@@ -114,12 +118,11 @@ namespace IngameScript
             try { rotors.Add("BottomRotor", GridTerminalSystem.GetBlockWithName("Bottom rotor") as IMyMotorAdvancedStator); }
             catch { throw new Exception("\"Bottom rotor\" rotor is not set"); }
 
-            #endregion
 
             Dictionary<string, string> storage = parseStorage();
 
             //context.currentDrillStep = (byte)(storage.ContainsKey("currentDrillStep") ? byte.Parse(storage["currentDrillStep"]) : context.currentDrillStep);
-            context.currentState = (States)(storage.ContainsKey("currentState") ? Enum.Parse(typeof(States),storage["currentState"]) : context.currentState);
+            context.currentState = (States)(storage.ContainsKey("currentState") ? Enum.Parse(typeof(States), storage["currentState"]) : context.currentState);
             context.currentExtruderPositon = (byte)(storage.ContainsKey("currentExtruderPostion") ? byte.Parse(storage["currentExtruderPositon"]) : context.currentExtruderPositon);
             context.currentExtruderStep = (byte)(storage.ContainsKey("currentExtruderStep") ? byte.Parse(storage["currentExtruderStep"]) : context.currentExtruderStep);
             context.IsCalculateDrillDistanceCalled = storage.ContainsKey("IsCalculateDrillDistanceCalled ") && bool.Parse(storage["IsCalculateDrillDistanceCalled"]);
@@ -129,23 +132,25 @@ namespace IngameScript
 
 
             extruderPiston.SetValueBool("ShareInertiaTensor", true);
-            drillPistons.ForEach(piston=>piston.SetValueBool("ShareInertiaTensor", true)); 
+            extruderPiston.MaxLimit = 0f;
+
+            drillPistons.ForEach(piston => piston.SetValueBool("ShareInertiaTensor", true));
             // safety reas
             rotors["TopRotor"].Attach();
             rotors["TopRotor"].RotorLock = true;
             rotors["TopRotor"].SetValueBool("ShareInertiaTensor", true);
-           
+
             rotors["BottomRotor"].Attach();
             rotors["BottomRotor"].SetValueBool("ShareInertiaTensor", true);
             rotors["BottomRotor"].RotorLock = true;
 
-            
+
 
 
             context.currentState = States.iddle;
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
 
-            
+
         }
 
 
@@ -153,15 +158,15 @@ namespace IngameScript
         {
             Dictionary<string, string> states = new Dictionary<string, string>();
             /**
-             * state is something like as string
-             * key:value;anotherKey:value;diffirentKey:value
-             * 
-             * split it someting like
-             * [ "key:value", "key:value"]
-             * 
-             * then split each item from :  like [ ["key", "value"] , ["key" , "value"] ] 
-             * and create a Dictonory<string, string> = <key,value>
-             */
+                     * state is something like as string
+                     * key:value;anotherKey:value;diffirentKey:value
+                     *
+                     * split it someting like
+                     * [ "key:value", "key:value"]
+                     *
+                     * then split each item from :  like [ ["key", "value"] , ["key" , "value"] ]
+                     * and create a Dictonory<string, string> = <key,value>
+                     */
 
             try
             {
@@ -171,7 +176,8 @@ namespace IngameScript
 
                     states.Add(keyVal[0], keyVal[1]);
                 }
-            } catch
+            }
+            catch
             {
                 return new Dictionary<string, string>();
             }
@@ -196,9 +202,9 @@ namespace IngameScript
 
 
         /**
-         * 
-         * @iddle if not doing anything pistons, velders, grinders will be stopped for energy saving
-        */
+                 *
+                 * @iddle if not doing anything pistons, velders, grinders will be stopped for energy saving
+                */
 
 
         void getStateFromArg(string arg)
@@ -211,41 +217,47 @@ namespace IngameScript
                     context.currentState = States.preparing;
 
                     break;
-                
-                default:
-                 
+                case "extend":
+                    context.currentState = States.extruderExtending;
                     break;
-                   
+                case "reset":
+                    reset();
+                    break;
+                default:
+
+                    break;
+
             }
         }
         public void Main(string argument, UpdateType updateSource)
         {
 
-            getStateFromArg(argument);
             Echo(context.currentState.ToString());
-            Echo("drill pos : " + context.currentDrillStep);
-            Echo("current step : " + context.currentDrillStep);
+            Echo("extruder step : " + context.currentExtruderStep.ToString());
+            Echo("Extruder calculate called : " + context.IsCalculateExtruderDistanceCalled);
+            getStateFromArg(argument);
+
             switch (context.currentState)
             {
                 case States.iddle:
-              
+
                     break;
                 case States.rotating:
                     RotateDrill();
                     break;
                 case States.drillExtending:
-                
+
                     ExtendDrill();
                     break;
                 case States.drillRectracting:
                     RectractDrill();
                     break;
                 case States.extruderExtending:
-                    
+                    ExtendExtruder();
                     break;
                 case States.extruderRectracting:
-                
- 
+                    RectractExtruder();
+
                     break;
                 case States.calculateDrillDistance:
                     if (!context.IsCalculateDrillDistanceCalled) CalculateDrillDistance();
@@ -263,12 +275,10 @@ namespace IngameScript
         }
 
 
-        #region globals for calculating drill distance per step
-       
-    
+
+
         byte maxStep;
         float maxDrillDistance;
-        #endregion
 
 
 
@@ -277,13 +287,16 @@ namespace IngameScript
 
             if (context.IsCalculateDrillDistanceCalled)
             {
-             
+
                 return;
             }
-            context.IsCalculateDrillDistanceCalled = true;
-          
 
-            if(context.currentDrillStep > maxStep)
+
+            Echo("callculatingggg whoaaa");
+            context.IsCalculateDrillDistanceCalled = true;
+
+
+            if (context.currentDrillStep > maxStep)
             {
 
                 // do nothing
@@ -292,10 +305,10 @@ namespace IngameScript
                 return;
             }
 
-     
+
             float currentDistance;
 
-            if(maxStep > context.currentDrillStep)  currentDistance = context.currentDrillStep * (drills.Count * 2.5f);
+            if (maxStep > context.currentDrillStep) currentDistance = context.currentDrillStep * (drills.Count * 2.5f);
             else currentDistance = maxDrillDistance;
 
 
@@ -303,7 +316,7 @@ namespace IngameScript
 
             // distance for this step
 
-            
+
             float distance = currentDistance;
 
             foreach (IMyPistonBase piston in drillPistons)
@@ -312,19 +325,20 @@ namespace IngameScript
                 float availableDistance = 10f - piston.CurrentPosition;
 
 
-               
+
                 if (distance <= availableDistance)
                 {
-                    
+
                     piston.MaxLimit = piston.CurrentPosition + distance;
                     distance -= distance;
 
                 }
-                else {
+                else
+                {
 
-                  
+
                     piston.MaxLimit = piston.CurrentPosition + availableDistance;
-                    distance -=  availableDistance;
+                    distance -= availableDistance;
 
                 }
 
@@ -338,7 +352,6 @@ namespace IngameScript
         }
 
 
-        #region prepare drills before start drilling
         // do not enable drills untill rectracting compleate for energy saving
         void enableDrills()
         {
@@ -347,106 +360,234 @@ namespace IngameScript
         }
 
 
-        
+
         void Prepare()
         {
+            Echo("prep 1");
+            destinationAngle = 0f;
+            context.IsCalculateDrillDistanceCalled = false;
 
-
-           
             rotors["TopRotor"].Attach();
             rotors["BottomRotor"].Attach();
 
             // rectract all pistons default postion;
-            drillPistons.ForEach(piston => {
+            drillPistons.ForEach(piston =>
+            {
 
                 piston.MaxLimit = 0;
                 piston.Velocity = .5f;
                 piston.Retract();
+                Echo("prep 2");
             });
 
             rotors["DrillRotor"].Torque = 33600000f;
-            rotors["DrillRotor"].TargetVelocityRad = .07f;
+            rotors["DrillRotor"].TargetVelocityRad = (.03f / (context.currentDrillStep + 1));
 
-
+            if (Math.Round((float)(180 / Math.PI) * rotors["DrillRotor"].Angle) == 0)
+            {
+                Echo("prep 8");
+                context.currentState = States.calculateDrillDistance;
+                return;
+            }
             if (drillPistons.TrueForAll(piston => piston.Status == PistonStatus.Extended))
             {
+                Echo("prep 4");
                 enableDrills();
                 context.currentState = States.preparing;
-           
+
             }
-            if(Math.Round((float)(180 / Math.PI) * rotors["DrillRotor"].Angle) != destinationAngle)
+            if (Math.Round((float)(180 / Math.PI) * rotors["DrillRotor"].Angle) != destinationAngle)
             {
+                Echo("prep 5");
                 rotors["DrillRotor"].UpperLimitRad = 0;
+                Echo("Dest angle :" + destinationAngle);
                 Echo("angle : " + Math.Round((180 / Math.PI) * rotors["DrillRotor"].Angle).ToString());
-               
+
                 context.currentState = States.preparing;
             }
-            
+
             else
             {
+                Echo("prep 6");
 
                 context.currentState = States.calculateDrillDistance;
             }
 
+            Echo("prep 7");
+
         }
-        #endregion
 
 
         void RectractDrill()
         {
 
-            drillPistons.ForEach(piston => {
+            drillPistons.ForEach(piston =>
+            {
                 piston.Retract();
             });
 
 
-            if(drillPistons.TrueForAll(piston => piston.Status == PistonStatus.Retracted))
+            if (drillPistons.TrueForAll(piston => piston.Status == PistonStatus.Retracted))
             {
                 context.currentState = States.extruderExtending;
             }
-            
 
 
 
-            
+
+
         }
-
-
-
 
         void ExtendExtruder()
         {
 
-            Echo("extruder extendssss");
-            extruderPiston.MaxLimit = (10f / 4) * context.currentExtruderStep;  
 
+            IMyMotorAdvancedStator TopRotor = rotors["TopRotor"];
+            IMyMotorAdvancedStator BotRotor = rotors["BottomRotor"];
+
+            TopRotor.Attach();
+
+
+            if (context.currentExtruderStep > 4)
+            {
+                context.currentState = States.extruderRectracting;
+                return;
+            }
+
+            if (TopRotor.IsAttached == false) return;
+
+            BotRotor.Detach();
+
+
+            drillPistons.ForEach(piston =>
+            {
+                piston.MaxLimit = 0f;
+                piston.Retract();
+
+            });
+
+
+            if (drillPistons.TrueForAll(piston => piston.Status != PistonStatus.Retracted))
+            {
+
+                Echo("Drills rectracting");
+                return;
+            }
+
+
+
+
+
+            if (!context.IsCalculateExtruderDistanceCalled)
+            {
+                // cleanup
+                context.IsCalculateExtruderDistanceCalled = true;
+
+                context.IsCalculateDrillDistanceCalled = false;
+                context.currentDrillStep = 0;
+                context.rotateDrillCalled = false;
+
+                float extruderPostion = calculateExtruder();
+                context.currentExtruderStep += 1;
+
+                extruderPiston.MaxLimit = extruderPostion;
+                extruderPiston.Extend();
+
+
+            }
+
+
+            if (extruderPiston.Status == PistonStatus.Extended)
+            {
+                context.IsCalculateExtruderDistanceCalled = false;
+                context.currentState = States.preparing;
+            }
+        }
+
+        void RectractExtruder()
+        {
+
+            IMyMotorAdvancedStator TopRotor = rotors["TopRotor"];
+            IMyMotorAdvancedStator BotRotor = rotors["BottomRotor"];
+
+
+            BotRotor.Attach();
+
+            if (BotRotor.IsAttached)
+            {
+                TopRotor.Detach();
+
+                context.IsCalculateExtruderDistanceCalled = false;
+                context.rotateDrillCalled = false;
+                context.IsCalculateDrillDistanceCalled = false;
+                context.currentDrillStep = 0;
+                context.currentExtruderStep = 1;
+                extruderPiston.Retract();
+
+
+
+            }
+
+
+
+
+            if (extruderPiston.Status == PistonStatus.Retracted)
+            {
+                TopRotor.Attach();
+
+                if (TopRotor.IsAttached)
+                {
+                    extruderPiston.MaxLimit = 0f;
+                    BotRotor.Detach();
+                    context.currentState = States.preparing;
+
+
+
+
+                }
+
+            }
+
+
+        }
+        void reset()
+        {
+            context.currentDrillStep = 0;
+            context.currentExtruderPositon = 1;
+            context.currentExtruderStep = 0;
+            context.currentState = States.iddle;
+            context.IsCalculateDrillDistanceCalled = false;
+            context.IsCalculateExtruderDistanceCalled = false;
+        }
+
+        float calculateExtruder()
+        {
+
+            return 2.5f * context.currentExtruderStep;
         }
 
         void ExtendDrill()
         {
-            
-            drillPistons.ForEach(piston => {
+
+            drillPistons.ForEach(piston =>
+            {
 
                 piston.Velocity = 0.5f;
                 piston.Extend();
 
-                
-            
+
+
             });
 
 
 
-            if(drillPistons.TrueForAll(piston => piston.Status == PistonStatus.Extended))
-                    context.currentState = States.rotating;
+            if (drillPistons.TrueForAll(piston => piston.Status == PistonStatus.Extended))
+                context.currentState = States.rotating;
 
             else context.currentState = States.drillExtending;
         }
 
 
-        void Cleanup()
-        {
-
-        }
 
 
         float destinationAngle = 0f;
@@ -454,15 +595,15 @@ namespace IngameScript
         void RotateDrill()
         {
 
-      
+
             IMyMotorAdvancedStator rotor = rotors["DrillRotor"];
 
 
             rotors["DrillRotor"].Torque = 33600000f;
-            rotors["DrillRotor"].TargetVelocityRad = .07f;
+            rotors["DrillRotor"].TargetVelocityRad = (.03f / (context.currentDrillStep + 1));
 
             float currentAngle = (float)Math.Round((180 / Math.PI) * rotor.Angle);
-           
+
             // check if rotor start from 360 degree
             if (!context.rotateDrillCalled)
             {
@@ -474,18 +615,19 @@ namespace IngameScript
                 }
                 context.rotateDrillCalled = true;
             }
-            
+
 
 
             Echo("currentAngle : " + currentAngle.ToString());
             Echo("TargetAngle : " + destinationAngle);
 
             if (currentAngle < destinationAngle) rotor.UpperLimitDeg = 360f;
-            if (currentAngle >= destinationAngle) {
+            if (currentAngle >= destinationAngle)
+            {
 
 
-             
-          
+
+
                 if (destinationAngle >= 360f)
                 {
                     destinationAngle = 0;
@@ -502,6 +644,7 @@ namespace IngameScript
 
 
         }
+
 
 
 
